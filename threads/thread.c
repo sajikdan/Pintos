@@ -289,7 +289,7 @@ void
 thread_exit (void) 
 {
   ASSERT (!intr_context ());
-
+//printf("----------------thread_exit() calling proces_exit()\n");
 #ifdef USERPROG
   process_exit ();
 #endif
@@ -299,6 +299,8 @@ thread_exit (void)
      when it calls thread_schedule_tail(). */
   intr_disable ();
   list_remove (&thread_current()->allelem);
+  
+      //printf("--------------------------Marker list_remove\n");
   thread_current ()->status = THREAD_DYING;
   schedule ();
   NOT_REACHED ();
@@ -470,6 +472,18 @@ init_thread (struct thread *t, const char *name, int priority)
   t->priority = priority;
   t->magic = THREAD_MAGIC;
   list_push_back (&all_list, &t->allelem);
+
+//---------------------------New Fields for semaphore
+#ifdef USERPROG
+  sema_init(&(t->kill_me), 0);
+  sema_init(&(t->do_it), 0);
+  list_init(&(t->child_threads));
+  list_push_back(&(running_thread()->child_threads), &(t->child_elem));
+#endif
+//-----------------------------------------------------
+
+  t->exitstat = 0;
+
 }
 
 /* Allocates a SIZE-byte frame at the top of thread T's stack and

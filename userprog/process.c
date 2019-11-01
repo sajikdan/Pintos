@@ -29,7 +29,13 @@ tid_t
 process_execute (const char *file_name) 
 {
   char *fn_copy;
+  char my_name[15];
   tid_t tid;
+  int i;
+
+  for(i = 0; file_name[i] != '\0' && file_name[i] != ' '; i++)
+	  my_name[i] = file_name[i];
+  my_name[i] = '\0';
 
   /* Make a copy of FILE_NAME.
      Otherwise there's a race between the caller and load(). */
@@ -38,10 +44,12 @@ process_execute (const char *file_name)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
 
+  
   /* Create a new thread to execute FILE_NAME. */
-  tid = thread_create (file_name, PRI_DEFAULT, start_process, fn_copy);
+  tid = thread_create (my_name, PRI_DEFAULT, start_process, fn_copy);
   if (tid == TID_ERROR)
     palloc_free_page (fn_copy); 
+
   return tid;
 }
 
@@ -86,11 +94,36 @@ start_process (void *file_name_)
    This function will be implemented in problem 2-2.  For now, it
    does nothing. */
 int
-process_wait (tid_t child_tid UNUSED) 
+process_wait (tid_t child_tid) 
 {
+  /*
   int i;
-  for(i = 0; i < 5000000000; i++);
+  for(i = 0; i < 4500000000; i++);
   return -1;
+  */
+ //-----------------------------------------------using semaphores
+  struct list_elem *e;
+  struct thread *t = NULL;
+  //printf("======thread_current name = %s\n", thread_current()->name);
+  //printf("====================process wait=====\n");
+  for (e = list_begin(&(thread_current()->child_threads)); e != list_end(&(thread_current()->child_threads)); e = list_next(e))
+  {
+    t = list_entry(e, struct thread, child_elem);
+    if (child_tid == t->tid){
+      //printf("------------t->name = %s-------------+++kill_me down!\n", t->name);
+      sema_down(&(t->kill_me));
+      //printf("++++++++++kill_me down finished\n");
+      //printf("-------------------get exit status");
+      int exit_status = t->exitstat;
+      //printf("--------------------------Marker list_remove\n");
+      list_remove(&(t->child_elem));
+      //printf("--------------------------Marker list_remove\n");
+      sema_up(&(t->do_it));
+      return exit_status;
+    }
+  }
+  return -1;
+  //--------------------------------------------------------------
 }
 
 /* Free the current process's resources. */
@@ -116,6 +149,15 @@ process_exit (void)
       pagedir_activate (NULL);
       pagedir_destroy (pd);
     }
+    //-------------------------------------------control semaphores
+    //printf("------------cur->name = %s---------------\n", cur->name);
+    //printf("-------------kill me up!\n");
+    sema_up(&(cur->kill_me));
+    //printf("==============kill me up success!\n");
+    //printf("--------------do_it down!\n");
+    sema_down(&(cur->do_it));
+    //printf("------==========do_it success!\n");
+    //-------------------------------------------------------------
 }
 
 /* Sets up the CPU for running user code in the current
@@ -329,7 +371,6 @@ load (const char *file_name, void (**eip) (void), void **esp)
     total_len += len + 1;
     strlcpy(*esp, argv[j], len + 1);
     argv[j] = *esp;
-    //*--esp = argv[j];
   }
   if (total_len % 4 != 0){
     *esp -= 4 - (total_len % 4);
@@ -339,23 +380,19 @@ load (const char *file_name, void (**eip) (void), void **esp)
   for ( j = argc - 1; j >= 0; j--){
     *esp -= 4;
     **(uint32_t **)esp = argv[j];
-    //*esp = &argv[j];
   }
-  printf("-----------------------------Marker\n");
+  //printf("-----------------------------Marker\n");
   *esp -= 4;
-  //*esp = argv;
   **(uint32_t **)esp = *esp + 4;
   *esp -= 4;
-  //*esp = argc;
   **(uint32_t **)esp = argc;
   *esp -= 4;
-  //*esp = 0;
   **(uint32_t **)esp = 0;
   esp = ebp;
-  printf("-----------------------------Marker\n");
-  hex_dump(*esp, *esp, 100, 1);
-  printf("-----------------------------Marker\n");
-  free(argv);
+  //printf("-----------------------------Marker\n");
+  //hex_dump(*esp, *esp, 100, 1);
+  //printf("-----------------------------Marker\n");
+  palloc_free_page(argv);
 
   /* Start address. */
   *eip = (void (*) (void)) ehdr.e_entry;

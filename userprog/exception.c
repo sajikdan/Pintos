@@ -4,6 +4,9 @@
 #include "userprog/gdt.h"
 #include "threads/interrupt.h"
 #include "threads/thread.h"
+#include "threads/vaddr.h"
+#include "syscall.h"
+#include "lib/user/syscall.h"
 
 /* Number of page faults processed. */
 static long long page_fault_cnt;
@@ -148,11 +151,8 @@ page_fault (struct intr_frame *f)
   write = (f->error_code & PF_W) != 0;
   user = (f->error_code & PF_U) != 0;
 
-
-if(user == false){
-   int large = 4294967295;
-   asm("movl %%eax, %%eip; movl %1, %%eax" : : "r" (large));
-}
+  /* If it is not a valid address, exit. */
+  if (!user || is_kernel_vaddr(fault_addr)) exit(-1);
 
   /* To implement virtual memory, delete the rest of the function
      body, and replace it with code that brings in the page to
