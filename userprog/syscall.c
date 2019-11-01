@@ -118,9 +118,23 @@ bool is_user_vad(void *addr) {
 }
 
 int fibonacci(int n){
+	int f1 = 1;
+	int f2 = 1;
+	int f3 = 1;
+	int i;
 
+	if(n == 0){
+		return 0;
+	}
+	for (i = 2; i < n; i++)
+	{
+		f3 = f2 + f1;
+		f1 = f2;
+		f2 = f3;
+	}
+	return f3;
 }
 
 int sum_of_four_int(int a, int b, int c, int d){
-	
+	return (a + b + c + d);
 }
