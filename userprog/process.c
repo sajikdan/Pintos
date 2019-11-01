@@ -32,6 +32,7 @@ process_execute (const char *file_name)
   char my_name[15];
   tid_t tid;
   int i;
+  struct file *CHECK;
 
   for(i = 0; file_name[i] != '\0' && file_name[i] != ' '; i++)
 	  my_name[i] = file_name[i];
@@ -43,6 +44,10 @@ process_execute (const char *file_name)
   if (fn_copy == NULL)
     return TID_ERROR;
   strlcpy (fn_copy, file_name, PGSIZE);
+
+  CHECK = filesys_open(my_name);
+  if (CHECK == NULL)
+	  return -1;
 
   
   /* Create a new thread to execute FILE_NAME. */
