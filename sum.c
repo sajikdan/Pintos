@@ -4,17 +4,17 @@
 
 int main(int argc, char **argv)
 {
-    int a, b, c, d;
-    int fib, sum;
+    int a, b, c, d, fib, four;
 
     a = atoi(argv[1]);
     b = atoi(argv[2]);
     c = atoi(argv[3]);
     d = atoi(argv[4]);
-
-    fib = fibonacci(a);
-    sum = sum_of_four_int(a, b, c, d);
-
+	
+	fib = fibonacci(a);
+	four = sum_of_four_int(a,b,c,d);
+    
+	printf("%d %d\n", fib, four);
     /*int sum = 0;
     int num;
     int i, j;
@@ -34,8 +34,5 @@ int main(int argc, char **argv)
         sum += num;
     }
     */
-
-    printf("%d %d\n", fib, sum);
-    
     return EXIT_SUCCESS;
 }

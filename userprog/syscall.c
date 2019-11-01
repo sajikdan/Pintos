@@ -72,14 +72,15 @@ syscall_handler(struct intr_frame *f UNUSED)
 			(unsigned) *((uint32_t *)(f_esp + 3 * BLANK)));
 		break;
 	case SYS_FIB:
-		fibonacci((int) *(uint32_t *)(f_esp + BLANK));
+		f->eax = fibonacci((int) *(uint32_t *)(f_esp + BLANK));
 		break;
 
 	case SYS_SUM:
-		sum_of_four_int((int) *(uint32_t *)(f_esp + BLANK),
+		f->eax = sum_of_four_int((int) *(uint32_t *)(f_esp + BLANK),
 			(int) *(uint32_t *)(f_esp + 2 * BLANK),
-			(int) *((uint32_t *)(f_esp + 3 * BLANK)),(int) *((uint32_t *)(f_esp + 4 * BLANK)));
-			break;
+			(int) *(uint32_t *)(f_esp + 3 * BLANK),
+			(int) *(uint32_t *)(f_esp + 4 * BLANK));
+		break;
 	
 	default:
 		break;
