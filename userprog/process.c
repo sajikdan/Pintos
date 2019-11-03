@@ -368,30 +368,33 @@ load (const char *file_name, void (**eip) (void), void **esp)
 
   /* Construct stack. */
   void **ebp = esp;
-  int j, len;
-  int total_len = 0;
+  int j, arg_length;
+  int total_length = 0;
+  //printf("-----------------------------Marker\n");
   for ( j = argc - 1; j >= 0; j--){
-    len = strlen(argv[j]);
-    *esp -= len + 1;
-    total_len += len + 1;
-    strlcpy(*esp, argv[j], len + 1);
+    arg_length = strlen(argv[j]);
+    *esp = *esp - (arg_length + 1);
+    total_length = total_length + arg_length + 1;
+    strlcpy(*esp, argv[j], arg_length + 1);
     argv[j] = *esp;
   }
-  if (total_len % 4 != 0){
-    *esp -= 4 - (total_len % 4);
+  //printf("-----------------------------Marker\n");
+  if (total_length % 4 != 0){
+    *esp = *esp - (4 - (total_length % 4));
   }
-  *esp -= 4;
+  //printf("-----------------------------Marker\n");
+  *esp = *esp - 4;
   **(uint32_t **)esp = 0;
   for ( j = argc - 1; j >= 0; j--){
-    *esp -= 4;
+    *esp = *esp - 4;
     **(uint32_t **)esp = argv[j];
   }
   //printf("-----------------------------Marker\n");
-  *esp -= 4;
+  *esp = *esp - 4;
   **(uint32_t **)esp = *esp + 4;
-  *esp -= 4;
+  *esp = *esp - 4;
   **(uint32_t **)esp = argc;
-  *esp -= 4;
+  *esp = *esp - 4;
   **(uint32_t **)esp = 0;
   esp = ebp;
   //printf("-----------------------------Marker\n");

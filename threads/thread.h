@@ -98,10 +98,10 @@ struct thread
 #ifdef USERPROG
     /* Owned by userprog/process.c. */
     uint32_t *pagedir;                  /* Page directory. */
-    struct semaphore kill_me;
-    struct semaphore do_it;
     struct list child_threads;
     struct list_elem child_elem;
+    struct semaphore kill_me;
+    struct semaphore do_it;
 #endif
 
     /* Owned by thread.c. */

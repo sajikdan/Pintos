@@ -475,10 +475,10 @@ init_thread (struct thread *t, const char *name, int priority)
 
 //---------------------------New Fields for semaphore
 #ifdef USERPROG
-  sema_init(&(t->kill_me), 0);
-  sema_init(&(t->do_it), 0);
   list_init(&(t->child_threads));
   list_push_back(&(running_thread()->child_threads), &(t->child_elem));
+  sema_init(&(t->kill_me), 0);
+  sema_init(&(t->do_it), 0);  
 #endif
 //-----------------------------------------------------
 
