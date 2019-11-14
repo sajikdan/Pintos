@@ -81,7 +81,8 @@ syscall_handler(struct intr_frame *f UNUSED)
 			(int) *(uint32_t *)(f_esp + 3 * BLANK),
 			(int) *(uint32_t *)(f_esp + 4 * BLANK));
 		break;
-	
+	case SYS_CREATE:
+		f->eax = 
 	default:
 		break;
 	}
