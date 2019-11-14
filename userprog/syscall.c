@@ -181,6 +181,10 @@ int read(int fd, void *buffer, unsigned size) {
 		while (((char *)buffer)[i] != '\0' && ++i < size);
 	}
 	else if (fd > 2) {
+			if (thread_current()->fd[fd] == NULL) {
+			//if no such file is open, then exit
+			exit(-1);
+		}
 		return file_read(thread_current()->fd[fd], buffer, size);
 	}
 	return i;
@@ -192,6 +196,11 @@ int write(int fd, const void *buffer, unsigned size) {
 		return size;
 	}
 	else if (fd > 2) {
+		//if no such file is open, then exit
+		if (thread_current()->fd[fd] == NULL) {
+			exit(-1);
+		}
+
 		return file_write(thread_current()->fd[fd], buffer, size);
 	}
 	return -1;
@@ -226,20 +235,47 @@ int sum_of_four_int(int a, int b, int c, int d){
 }
 
 bool create (const char* file, unsigned initial_size) {
+	//invalid file name
+	if (file == NULL) 
+		exit(-1);
+
+	//invalid address
+	if (!is_user_vad(file))
+		exit(-1);
+
 	return filesys_create(file, initial_size);
 }
 
 bool remove (const char* file) {
+	//invalid file name
+	if (file == NULL)
+		exit(-1);
+
+	//invalid address
+	if (!is_user_vad(file))
+		exit(-1);
+
 	return filesys_remove(file);
 }
 
 int open(const char* file){
+	//invalid file name
+	if (file == NULL)
+		exit(-1);
+	
+	//invalid address
+	if (!is_user_vad(file))
+		exit(-1);
+	
 	int i;
 	struct file* fp = filesys_open(file);
+
+	//no such file
 	if (fp == NULL) {
 		return -1;
 	}
 	else {
+		//open file in a thread file descriptor
 		for (i = 3; i < 128; i++) {
 			if (thread_current()->fd[i] == NULL) {
 				thread_current()->fd[i] = fp;
@@ -251,17 +287,33 @@ int open(const char* file){
 }
 
 int filesize (int fd) {
+	//if no such file is open, then exit
+	if (thread_current()->fd[fd] == NULL)
+		exit(-1);
+
 	return file_length(thread_current()->fd[fd]);
 }
 
 void seek (int fd, unsigned position) {
+	//if no such file is open, then exit
+	if (thread_current()->fd[fd] == NULL)
+		exit(-1);
+
 	file_seek(thread_current()->fd[fd], position);
 }
 
 unsigned tell (int fd) {
+	//if no such file is open, then exit
+	if (thread_current()->fd[fd] == NULL)
+		exit(-1);
+
 	return file_tell(thread_current()->fd[fd]);
 }
 
 void close (int fd) {
+	//if no such file is open, then exit
+	if (thread_current()->fd[fd] == NULL)
+		exit(-1);
+
 	file_close(thread_current()->fd[fd]);
 }
