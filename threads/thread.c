@@ -479,6 +479,9 @@ init_thread (struct thread *t, const char *name, int priority)
   list_push_back(&(running_thread()->child_threads), &(t->child_elem));
   sema_init(&(t->kill_me), 0);
   sema_init(&(t->do_it), 0);  
+  for (int i = 0; i < 128; i++){
+    t->fd[i] = NULL;
+  }
 #endif
 //-----------------------------------------------------
 

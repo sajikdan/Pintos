@@ -93,6 +93,11 @@ void exit(int status) {
 
 	printf("%s: exit(%d)\n", thread_name(), status);
 	//printf("-----------------------------------///\n");
+	for (i = 3; i < 128; i++) {
+		if (thread_current()->fd[i] != NULL) {
+			close(i);
+		}
+	}
 	thread_exit();
 	//printf("-===============-----------=======\n");
 }
@@ -108,8 +113,11 @@ int wait(pid_t pid) {
 int read(int fd, void *buffer, unsigned size) {
 	unsigned i = 0;
 
-	if (fd == 1) {
+	if (fd == 0) {
 		while (((char *)buffer)[i] != '\0' && ++i < size);
+	}
+	else if (fd > 2) {
+		return file_read(thread_current()->fd[fd], buffer, size);
 	}
 	return i;
 }
@@ -117,7 +125,11 @@ int read(int fd, void *buffer, unsigned size) {
 int write(int fd, const void *buffer, unsigned size) {
 	if (fd == 1){
 		putbuf(buffer, size);
-		return size;}
+		return size;
+	}
+	else if (fd > 2) {
+		return file_write(thread_current()->fd[fd], buffer, size);
+	}
 	return -1;
 }
 
@@ -147,4 +159,45 @@ int fibonacci(int n){
 
 int sum_of_four_int(int a, int b, int c, int d){
 	return (a + b + c + d);
+}
+
+bool create (const char* file, unsigned initial_size) {
+	return filesys_create(file, initial_size);
+}
+
+bool remove (const char* file) {
+	return filesys_remove(file);
+}
+
+int open(const char* file){
+	int i;
+	struct file* fp = filesys_open(file);
+	if (fp == NULL) {
+		return -1;
+	}
+	else {
+		for (i = 3; i < 128; i++) {
+			if (thread_current()->fd[i] == NULL) {
+				thread_current()->fd[i] = fp;
+				return i;
+			}
+		}
+	}
+	return -1;
+}
+
+int filesize (int fd) {
+	return file_length(thread_current()->fd[fd]);
+}
+
+void seek (int fd, unsigned position) {
+	file_seek(thread_current()->fd[fd], position);
+}
+
+unsigned tell (int fd) {
+	return file_tell(thread_current()->fd[fd]);
+}
+
+void close (int fd) {
+	return file_close(thread_current()->fd[fd]);
 }
