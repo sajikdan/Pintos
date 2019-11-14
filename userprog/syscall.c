@@ -61,6 +61,13 @@ syscall_handler(struct intr_frame *f UNUSED)
 		break;
 
 	case SYS_READ:
+		if (!is_user_vad(f_esp + BLANK))
+			exit(-1);
+		if (!is_user_vad(f_esp + 2 * BLANK))
+			exit(-1);
+		if (!is_user_vad(f_esp + 3 * BLANK))
+			exit(-1);
+
 		f->eax = read((int) *(uint32_t *)(f_esp + BLANK),
 			(void *) *(uint32_t *)(f_esp + 2 * BLANK),
 			(unsigned) *((uint32_t *)(f_esp + 3 * BLANK)));
@@ -71,6 +78,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 			(void*) *(uint32_t *)(f_esp + 2 * BLANK),
 			(unsigned) *((uint32_t *)(f_esp + 3 * BLANK)));
 		break;
+
 	case SYS_FIB:
 		f->eax = fibonacci((int) *(uint32_t *)(f_esp + BLANK));
 		break;
@@ -81,8 +89,62 @@ syscall_handler(struct intr_frame *f UNUSED)
 			(int) *(uint32_t *)(f_esp + 3 * BLANK),
 			(int) *(uint32_t *)(f_esp + 4 * BLANK));
 		break;
+
 	case SYS_CREATE:
-		f->eax = 
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		if (!is_user_vad(f_esp + 2 * BLANK)) {
+			exit(-1);
+		}
+		f->eax = create((const char*) *(uint32_t *)(f_esp + BLANK), (unsigned)*(uint32_t *)(f_esp + 2 * BLANK));
+		break;
+
+	case SYS_REMOVE :
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		f->eax = remove((const char*) *(uint32_t *)(f_esp + BLANK));
+		break;
+	
+	case SYS_OPEN:
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		f->eax = open((const char*) *(uint32_t *)(f_esp + BLANK));
+		break;
+
+	case SYS_FILESIZE:
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		f->eax = filesize((int) *(uint32_t *)(f_esp + BLANK));
+		break;
+	
+	case SYS_SEEK:
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		if (!is_user_vad(f_esp + 2 * BLANK)) {
+			exit(-1);
+		}
+		seek((int) *(uint32_t *)(f_esp + BLANK), (unsigned)*(uint32_t *)(f_esp + 2 * BLANK));
+		break;
+
+	case SYS_TELL:
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		f->eax = tell((int) *(uint32_t *)(f_esp + BLANK));
+		break;
+
+	case SYS_CLOSE:
+		if (!is_user_vad(f_esp + BLANK)) {
+			exit(-1);
+		}
+		close((int) *(uint32_t *)(f_esp + BLANK));
+		break;
+
 	default:
 		break;
 	}
@@ -91,6 +153,7 @@ syscall_handler(struct intr_frame *f UNUSED)
 
 void exit(int status) {
 	thread_current() -> exitstat = status;
+	int i;
 
 	printf("%s: exit(%d)\n", thread_name(), status);
 	//printf("-----------------------------------///\n");
@@ -114,7 +177,7 @@ int wait(pid_t pid) {
 int read(int fd, void *buffer, unsigned size) {
 	unsigned i = 0;
 
-	if (fd == 0) {
+	if (fd == 1) {
 		while (((char *)buffer)[i] != '\0' && ++i < size);
 	}
 	else if (fd > 2) {
@@ -200,5 +263,5 @@ unsigned tell (int fd) {
 }
 
 void close (int fd) {
-	return file_close(thread_current()->fd[fd]);
+	file_close(thread_current()->fd[fd]);
 }
