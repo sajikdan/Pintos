@@ -21,13 +21,15 @@ struct file
     bool deny_write;            /* Has file_deny_write() been called? */
   };
 
+struct lock open_read_write_lock;
+
 bool is_user_vad(void *addr);
 static void syscall_handler(struct intr_frame *);
-
 
 void
 syscall_init(void)
 {
+	lock_init(&open_read_write_lock);
 	intr_register_int(0x30, 3, INTR_ON, syscall_handler, "syscall");
 }
 
@@ -72,18 +74,19 @@ syscall_handler(struct intr_frame *f UNUSED)
 		break;
 
 	case SYS_READ:
+	/*
 		if (!is_user_vad(f_esp + BLANK))
 			exit(-1);
 		else if (!is_user_vad(f_esp + 2 * BLANK))
 			exit(-1);
 		else if (!is_user_vad(f_esp + 3 * BLANK))
 			exit(-1);
-		else {
+		else {*/
 		//hex_dump(f_esp, f_esp, 100, 1);
 			f->eax = read((int) *(uint32_t *)(f_esp + BLANK),
 				(void *) *(uint32_t *)(f_esp + 2 * BLANK),
 				(unsigned) *((uint32_t *)(f_esp + 3 * BLANK)));
-		}
+		//}
 		break;
 
 	case SYS_WRITE:
@@ -204,25 +207,36 @@ int wait(pid_t pid) {
 }
 
 int read(int fd, void *buffer, unsigned size) {
+	int ret = 0;
+	if (!is_user_vad(buffer)){
+		exit(-1);
+	}
 	unsigned i = 0;
-
+	lock_acquire(&open_read_write_lock);
 	if (fd == 0) {
 		while (((char *)buffer)[i] != '\0' && ++i < size);
+		ret = i;
 	}
 	else if (fd > 2) {
 			if (thread_current()->fd[fd] == NULL) {
 			//if no such file is open, then exit
 			exit(-1);
 		}
-		return file_read(thread_current()->fd[fd], buffer, size);
+		//lock_release(&open_read_write_lock);
+		ret = file_read(thread_current()->fd[fd], buffer, size);
 	}
-	return i;
+	lock_release(&open_read_write_lock);
+	return ret;
 }
 
 int write(int fd, const void *buffer, unsigned size) {
+	int ret = -1;
+	lock_acquire(&open_read_write_lock);
 	if (fd == 1){
 		putbuf(buffer, size);
-		return size;
+		//lock_release(&open_read_write_lock);		
+		//return size;
+		ret = size;
 	}
 	else if (fd > 2) {
 		//if no such file is open, then exit
@@ -232,10 +246,11 @@ int write(int fd, const void *buffer, unsigned size) {
 		if (thread_current()->fd[fd]->deny_write) {
 			file_deny_write(thread_current()->fd[fd]);
 		}
-
-		return file_write(thread_current()->fd[fd], buffer, size);
+		//lock_release(&open_read_write_lock);
+		ret = file_write(thread_current()->fd[fd], buffer, size);
 	}
-	return -1;
+	lock_release(&open_read_write_lock);
+	return ret;
 }
 
 
@@ -292,6 +307,7 @@ bool remove (const char* file) {
 
 int open(const char* file){
 	int i;
+	int ret = -1;
 	struct file* fp;
 	//invalid file name
 	if (file == NULL) {
@@ -302,11 +318,14 @@ int open(const char* file){
 		exit(-1);
 	} 
 	
+	lock_acquire(&open_read_write_lock);
 	fp = filesys_open(file);
 
 	//no such file
 	if (fp == NULL) {
-		return -1;
+		//lock_release(&open_read_write_lock);
+		//return -1;
+		ret = -1;
 	}
 	else {
 		//open file in a thread file descriptor
@@ -316,11 +335,15 @@ int open(const char* file){
 					file_deny_write(fp);
 				}
 				thread_current()->fd[i] = fp;
-				return i;
+				//lock_release(&open_read_write_lock);
+				//return i;
+				ret = i;
+				break;
 			}
 		}
 	}
-	return -1;
+	lock_release(&open_read_write_lock);
+	return ret;
 }
 
 int filesize (int fd) {
