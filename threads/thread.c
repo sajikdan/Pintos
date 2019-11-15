@@ -475,7 +475,8 @@ init_thread (struct thread *t, const char *name, int priority)
 
 //---------------------------New Fields for semaphore
 #ifdef USERPROG
-  for (int i = 0; i < 128; i++) {
+  int i;
+  for (i = 3; i < 128; i++) {
 	  t->fd[i] = NULL;
   }
   list_init(&(t->child_threads));

@@ -7,10 +7,19 @@
 #include "threads/vaddr.h"
 #include "devices/shutdown.h"
 #include "userprog/process.h"
+
+#include "filesys/off_t.h"
 #include <stdlib.h>
 #include <stdint.h>
 
 #define BLANK sizeof(uint32_t)
+
+struct file 
+  {
+    struct inode *inode;        /* File's inode. */
+    off_t pos;                  /* Current position. */
+    bool deny_write;            /* Has file_deny_write() been called? */
+  };
 
 bool is_user_vad(void *addr);
 static void syscall_handler(struct intr_frame *);
@@ -47,30 +56,34 @@ syscall_handler(struct intr_frame *f UNUSED)
 			//printf("\n\n%d\n\n",1);
 			exit(-1);
 		}
-
-		exit((int) *(uint32_t *)(f_esp + BLANK));
+		else {
+			exit((int) *(uint32_t *)(f_esp + BLANK));
 		//printf("\n\n%d\n\n",2);
-		
+		}
 		break;
 
 	case SYS_EXEC:
 		if (!is_user_vad(f_esp + BLANK))
 			exit(-1);
 
-		f->eax = exec((const char*) *(uint32_t *)(f_esp + BLANK));
+		else {
+			f->eax = exec((const char*) *(uint32_t *)(f_esp + BLANK));
+		}
 		break;
 
 	case SYS_READ:
 		if (!is_user_vad(f_esp + BLANK))
 			exit(-1);
-		if (!is_user_vad(f_esp + 2 * BLANK))
+		else if (!is_user_vad(f_esp + 2 * BLANK))
 			exit(-1);
-		if (!is_user_vad(f_esp + 3 * BLANK))
+		else if (!is_user_vad(f_esp + 3 * BLANK))
 			exit(-1);
-
-		f->eax = read((int) *(uint32_t *)(f_esp + BLANK),
-			(void *) *(uint32_t *)(f_esp + 2 * BLANK),
-			(unsigned) *((uint32_t *)(f_esp + 3 * BLANK)));
+		else {
+		//hex_dump(f_esp, f_esp, 100, 1);
+			f->eax = read((int) *(uint32_t *)(f_esp + BLANK),
+				(void *) *(uint32_t *)(f_esp + 2 * BLANK),
+				(unsigned) *((uint32_t *)(f_esp + 3 * BLANK)));
+		}
 		break;
 
 	case SYS_WRITE:
@@ -94,55 +107,71 @@ syscall_handler(struct intr_frame *f UNUSED)
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
 		}
-		if (!is_user_vad(f_esp + 2 * BLANK)) {
+		else if (!is_user_vad(f_esp + 2 * BLANK)) {
 			exit(-1);
 		}
-		f->eax = create((const char*) *(uint32_t *)(f_esp + BLANK), (unsigned)*(uint32_t *)(f_esp + 2 * BLANK));
+		else {
+			f->eax = create((const char*) *(uint32_t *)(f_esp + BLANK), (unsigned)*(uint32_t *)(f_esp + 2 * BLANK));
+		}
 		break;
 
 	case SYS_REMOVE :
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
 		}
-		f->eax = remove((const char*) *(uint32_t *)(f_esp + BLANK));
+		else {
+			f->eax = remove((const char*) *(uint32_t *)(f_esp + BLANK));
+		}
 		break;
 	
 	case SYS_OPEN:
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
 		}
-		f->eax = open((const char*) *(uint32_t *)(f_esp + BLANK));
+		else {
+			f->eax = open((const char*) *(uint32_t *)(f_esp + BLANK));
+		}
 		break;
 
 	case SYS_FILESIZE:
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
 		}
-		f->eax = filesize((int) *(uint32_t *)(f_esp + BLANK));
+		else {
+			f->eax = filesize((int) *(uint32_t *)(f_esp + BLANK));
+		}
 		break;
 	
 	case SYS_SEEK:
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
 		}
-		if (!is_user_vad(f_esp + 2 * BLANK)) {
+		else if (!is_user_vad(f_esp + 2 * BLANK)) {
 			exit(-1);
 		}
-		seek((int) *(uint32_t *)(f_esp + BLANK), (unsigned)*(uint32_t *)(f_esp + 2 * BLANK));
+		else {
+			seek((int) *(uint32_t *)(f_esp + BLANK), (unsigned)*(uint32_t *)(f_esp + 2 * BLANK));
+		}
 		break;
 
 	case SYS_TELL:
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
 		}
-		f->eax = tell((int) *(uint32_t *)(f_esp + BLANK));
+		else {
+			f->eax = tell((int) *(uint32_t *)(f_esp + BLANK));
+		}
 		break;
 
 	case SYS_CLOSE:
 		if (!is_user_vad(f_esp + BLANK)) {
 			exit(-1);
+			printf("-------------is_user_vad in SYS_CLOSE\n");
 		}
-		close((int) *(uint32_t *)(f_esp + BLANK));
+		//hex_dump(f_esp, f_esp, 100, 1);
+		else {
+			close((int) *(uint32_t *)(f_esp + BLANK));
+		}
 		break;
 
 	default:
@@ -177,7 +206,7 @@ int wait(pid_t pid) {
 int read(int fd, void *buffer, unsigned size) {
 	unsigned i = 0;
 
-	if (fd == 1) {
+	if (fd == 0) {
 		while (((char *)buffer)[i] != '\0' && ++i < size);
 	}
 	else if (fd > 2) {
@@ -199,6 +228,9 @@ int write(int fd, const void *buffer, unsigned size) {
 		//if no such file is open, then exit
 		if (thread_current()->fd[fd] == NULL) {
 			exit(-1);
+		}
+		if (thread_current()->fd[fd]->deny_write) {
+			file_deny_write(thread_current()->fd[fd]);
 		}
 
 		return file_write(thread_current()->fd[fd], buffer, size);
@@ -236,39 +268,41 @@ int sum_of_four_int(int a, int b, int c, int d){
 
 bool create (const char* file, unsigned initial_size) {
 	//invalid file name
-	if (file == NULL) 
+	if (file == NULL) {
 		exit(-1);
-
+	}
 	//invalid address
-	if (!is_user_vad(file))
+	if (!is_user_vad(file)) {
 		exit(-1);
-
+	}
 	return filesys_create(file, initial_size);
 }
 
 bool remove (const char* file) {
 	//invalid file name
-	if (file == NULL)
+	if (file == NULL) {
 		exit(-1);
-
+	}
 	//invalid address
-	if (!is_user_vad(file))
+	if (!is_user_vad(file)) {
 		exit(-1);
-
+	}
 	return filesys_remove(file);
 }
 
 int open(const char* file){
-	//invalid file name
-	if (file == NULL)
-		exit(-1);
-	
-	//invalid address
-	if (!is_user_vad(file))
-		exit(-1);
-	
 	int i;
-	struct file* fp = filesys_open(file);
+	struct file* fp;
+	//invalid file name
+	if (file == NULL) {
+		exit(-1);
+	}
+	//invalid address
+	if (!is_user_vad(file)) {
+		exit(-1);
+	} 
+	
+	fp = filesys_open(file);
 
 	//no such file
 	if (fp == NULL) {
@@ -278,6 +312,9 @@ int open(const char* file){
 		//open file in a thread file descriptor
 		for (i = 3; i < 128; i++) {
 			if (thread_current()->fd[i] == NULL) {
+				if (strcmp(thread_current()->name, file) == 0) {
+					file_deny_write(fp);
+				}
 				thread_current()->fd[i] = fp;
 				return i;
 			}
@@ -311,9 +348,17 @@ unsigned tell (int fd) {
 }
 
 void close (int fd) {
+	struct file* fp;
 	//if no such file is open, then exit
 	if (thread_current()->fd[fd] == NULL)
+	{
+		//printf("-------------------------thread_current()->fd[fd] == NULL\n");
 		exit(-1);
-
-	file_close(thread_current()->fd[fd]);
+	}
+	fp = thread_current()->fd[fd];
+	thread_current()->fd[fd] = NULL;
+	return file_close(fp);
+	//file_close(thread_current()->fd[fd]);
+	//printf("-----------=-=--=file closed!\n");
+	//printf("%d\n", sizeof(uint32_t));
 }
