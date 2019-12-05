@@ -24,9 +24,6 @@ static int64_t ticks;
    Initialized by timer_calibrate(). */
 static unsigned loops_per_tick;
 
-/* Project #3. */
-static struct list sleepy_sleepy;
-
 static intr_handler_func timer_interrupt;
 static bool too_many_loops (unsigned loops);
 static void busy_wait (int64_t loops);
@@ -183,23 +180,10 @@ timer_print_stats (void)
 /* Timer interrupt handler. */
 static void
 timer_interrupt (struct intr_frame *args UNUSED)
-{
-  struct thread* t;
-  struct list_elem* e;
+{ 
   ticks++;
-
-  for (e = list_begin(&sleepy_sleepy); e != list_end(&sleepy_sleepy); )
-  {
-    t = list_entry(e, struct thread, elem);
-    if (t->wakey_wakey <= ticks) {
-      e = list_remove(e);
-      thread_unblock(t);
-    }
-    else {
-      e = list_next(e);
-    }
-  }
-  thread_tick ();
+  int ticky = ticks;
+  thread_tick (ticky);
 }
 
 /* Returns true if LOOPS iterations waits for more than one timer

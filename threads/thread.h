@@ -6,10 +6,9 @@
 #include <stdint.h>
 #include "threads/synch.h" /* Project #3. */
 
-#ifdef USERPROG
 /* Project #3. */
 extern bool thread_prior_aging;
-#endif
+struct list sleepy_sleepy;
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -110,10 +109,12 @@ struct thread
 	struct semaphore locking;
 	struct file* fd[128];
 	struct thread* parent;
-	/* Project #3. */
-	
 #endif
+	/* Project #3. */
 	int64_t wakey_wakey;
+	int nice;
+	int recent_cpu;
+
 	/* Owned by thread.c. */
 	unsigned magic;                     /* Detects stack overflow. */
 };
@@ -126,7 +127,7 @@ extern bool thread_mlfqs;
 void thread_init(void);
 void thread_start(void);
 
-void thread_tick(void);
+void thread_tick(int ticks);
 void thread_print_stats(void);
 
 typedef void thread_func(void *aux);
