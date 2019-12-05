@@ -4,7 +4,12 @@
 #include <debug.h>
 #include <list.h>
 #include <stdint.h>
-#include "threads/synch.h"
+#include "threads/synch.h" /* Project #3. */
+
+#ifdef USERPROG
+/* Project #3. */
+extern bool thread_prior_aging;
+#endif
 
 /* States in a thread's life cycle. */
 enum thread_status
@@ -105,8 +110,10 @@ struct thread
 	struct semaphore locking;
 	struct file* fd[128];
 	struct thread* parent;
+	/* Project #3. */
+	
 #endif
-
+	int64_t wakey_wakey;
 	/* Owned by thread.c. */
 	unsigned magic;                     /* Detects stack overflow. */
 };
