@@ -463,8 +463,8 @@ thread_get_load_avg(void)
 	int f = load_avg;
 
 	#ifdef load_avg_recent_cpu_float
-	f = f / QBIT;
 	f = f * 100;
+	f = f / QBIT;
 	//return f;
 	#endif
 
@@ -484,8 +484,8 @@ thread_get_recent_cpu(void)
 	int f = thread_current()->recent_cpu;
 
 	#ifdef load_avg_recent_cpu_float
-	f = f / QBIT;
 	f = f * 100;
+	f = f / QBIT;
 	#endif
 
 	#ifndef load_avg_recent_cpu_float
@@ -790,6 +790,7 @@ void calculate_load_avg(void)
 	{
 		ready_num++;
 	}
+	//printf("----------========ready_num = %d\n", ready_num);
 	#ifdef load_avg_recent_cpu_float
 	int f_load_avg = load_avg;
 	#endif
@@ -815,6 +816,7 @@ void calculate_load_avg(void)
 	load_avg = f_load_avg / QBIT;
 	#endif
 
+	//printf("--------------------load_avg = %d\n", (load_avg * 100) / QBIT);
 	for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
 	{
 		t = list_entry(e, struct thread, allelem);
