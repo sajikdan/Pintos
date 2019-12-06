@@ -260,12 +260,6 @@ parse_options (char **argv)
         thread_prior_aging = true;
 
 #ifdef USERPROG
-/* Project #3. */
-      else if (!strcmp (name, "-aging")
-        thread_prior_aging = true;
-#endif
-
-#ifdef USERPROG
       else if (!strcmp (name, "-ul"))
         user_page_limit = atoi (value);
 #endif

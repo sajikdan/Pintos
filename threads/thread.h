@@ -8,8 +8,7 @@
 
 /* Project #3. */
 extern bool thread_prior_aging;
-struct list sleepy_sleepy;
-
+extern struct list sleepy_sleepy;
 /* States in a thread's life cycle. */
 enum thread_status
 {
@@ -127,7 +126,7 @@ extern bool thread_mlfqs;
 void thread_init(void);
 void thread_start(void);
 
-void thread_tick(int ticks);
+void thread_tick(int64_t ticks);
 void thread_print_stats(void);
 
 typedef void thread_func(void *aux);
@@ -154,5 +153,15 @@ int thread_get_nice(void);
 void thread_set_nice(int);
 int thread_get_recent_cpu(void);
 int thread_get_load_avg(void);
+
+void thread_wake_up(int64_t ticks);
+void thread_aging(int64_t ticks);
+bool compare_priority(const struct list_elem* e1, const struct list_elem* e2, void* aux);
+int thread_get_nice(void);
+void thread_set_nice(int new_nice);
+void calculate_load_avg(void);
+int calculate_recent_cpu(int recent_cpu, int nice);
+void calculate_priority(void);
+int highest_priority(void);
 
 #endif /* threads/thread.h */

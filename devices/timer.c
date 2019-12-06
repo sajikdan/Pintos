@@ -37,7 +37,6 @@ timer_init (void)
 {
   pit_configure_channel (0, 2, TIMER_FREQ);
   intr_register_ext (0x20, timer_interrupt, "8254 Timer");
-  list_init(&sleepy_sleepy);
 }
 
 /* Calibrates loops_per_tick, used to implement brief delays. */
@@ -182,7 +181,20 @@ static void
 timer_interrupt (struct intr_frame *args UNUSED)
 { 
   ticks++;
-  int ticky = ticks;
+  int64_t ticky = timer_ticks();
+  
+  /*if (thread_prior_aging || thread_mlfqs)
+  {
+    if (timer_ticks() % TIMER_FREQ == 0)
+    {
+     calculate_load_avg();
+    }
+	
+    if (timer_ticks() % 4 == 0)
+    {
+     calculate_priority();
+    }
+  }*/
   thread_tick (ticky);
 }
 

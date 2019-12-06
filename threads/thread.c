@@ -25,6 +25,9 @@ of thread.h for details. */
 /* Project #3. */
 #define QBIT (1<<14)
 
+//uncomment to keep load_avg and recent_cpu as float
+#define load_avg_recent_cpu_float
+
 /* List of processes in THREAD_READY state, that is, processes
 that are ready to run but not actually running. */
 static struct list ready_list;
@@ -39,6 +42,7 @@ static struct thread *idle_thread;
 /* Initial thread, the thread running init.c:main(). */
 static struct thread *initial_thread;
 
+struct list sleepy_sleepy;
 /* Lock used by allocate_tid(). */
 static struct lock tid_lock;
 
@@ -60,7 +64,7 @@ static long long user_ticks;    /* # of timer ticks in user programs. */
 static unsigned thread_ticks;   /* # of timer ticks since last yield. */
 
 /* Project #3. */
-bool thread_prior_aging; 
+bool thread_prior_aging;
 static int load_avg;
 
 								/* If false (default), use round-robin scheduler.
@@ -79,16 +83,6 @@ static void *alloc_frame(struct thread *, size_t size);
 static void schedule(void);
 void thread_schedule_tail(struct thread *prev);
 static tid_t allocate_tid(void);
-
-void thread_wake_up(int ticks);
-void thread_aging(void);
-bool compare_priority(const struct list_elem* e1, const struct list_elem* e2, void* aux);
-int thread_get_nice(void);
-void thread_set_nice(int new_nice);
-void calculate_load_avg(void);
-int calculate_recent_cpu(int recent_cpu, int nice);
-void calculate_priority(void);
-int highest_priority(void);
 
 /* Initializes the threading system by transforming the code
 that's currently running into a thread.  This can't work in
@@ -111,7 +105,7 @@ thread_init(void)
 	lock_init(&tid_lock);
 	list_init(&ready_list);
 	list_init(&all_list);
-
+	list_init(&sleepy_sleepy);
 	/* Project #3. */
 	load_avg = 0;
 
@@ -147,7 +141,7 @@ thread_start(void)
 /* Called by the timer interrupt handler at each timer tick.
 Thus, this function runs in an external interrupt context. */
 void
-thread_tick(int ticks)
+thread_tick(int64_t ticks)
 {
 	struct thread *t = thread_current();
 
@@ -167,8 +161,10 @@ thread_tick(int ticks)
 
 	/* Project #3. */
 	thread_wake_up(ticks);
-	if (thread_prior_aging == true)
-		thread_aging();
+	if (thread_prior_aging || thread_mlfqs)
+	{
+		thread_aging(ticks);
+	}	
 }
 
 /* Prints thread statistics. */
@@ -385,10 +381,11 @@ thread_foreach(thread_action_func *func, void *aux)
 void
 thread_set_priority(int new_priority)
 {
+	/*
 	if (thread_mlfqs)
 	{
 		return;
-	}
+	}*/
 
 	int old_priority = thread_current()->priority;
 
@@ -418,8 +415,16 @@ thread_set_nice(int nice)
 	int f_recent_cpu;
 	int f_PRI_MAX = PRI_MAX * QBIT;
 	int f_t_nice;
+	#ifdef load_avg_recent_cpu_float
+	//recent_cpu already floating point
+	f_recent_cpu = t->recent_cpu;
+	#endif
 
-	f_recent_cpu = t->recent_cpu;// * QBIT;
+	#ifndef load_avg_recent_cpu_float
+	//recent_cpu is integer (cast to floating point)
+	f_recent_cpu = t->recent_cpu * QBIT;
+	#endif
+
 	f_recent_cpu = f_recent_cpu / 4;
 	f = f_PRI_MAX - f_recent_cpu;
 	f_t_nice = t->nice * QBIT;
@@ -454,12 +459,21 @@ thread_get_nice(void)
 int
 thread_get_load_avg(void)
 {
-	/* Not yet implemented. */
+	/* Not yet implemented. */	
 	int f = load_avg;
-	f = f * 100;
+
+	#ifdef load_avg_recent_cpu_float
 	f = f / QBIT;
-	return f;
+	f = f * 100;
+	//return f;
+	#endif
+
+	#ifndef load_avg_recent_cpu_float
+	f = 100 * f;
 	//return (100 * load_avg);
+	#endif
+
+	return f;
 }
 
 /* Returns 100 times the current thread's recent_cpu value. */
@@ -468,8 +482,16 @@ thread_get_recent_cpu(void)
 {
 	/* Not yet implemented. */
 	int f = thread_current()->recent_cpu;
-	f = f * 100;
+
+	#ifdef load_avg_recent_cpu_float
 	f = f / QBIT;
+	f = f * 100;
+	#endif
+
+	#ifndef load_avg_recent_cpu_float
+	f = 100 * f;
+	#endif
+
 	return f;
 	//return (100 * thread_current()->recent_cpu);
 }
@@ -698,14 +720,14 @@ allocate_tid(void)
 Used by switch.S, which can't figure it out on its own. */
 uint32_t thread_stack_ofs = offsetof(struct thread, stack);
 
-void thread_wake_up(int ticks)
+void thread_wake_up(int64_t ticky)
 {
 	struct thread* t;
   	struct list_elem* e;
 	for (e = list_begin(&sleepy_sleepy); e != list_end(&sleepy_sleepy); )
   {
     t = list_entry(e, struct thread, elem);
-    if (t->wakey_wakey <= ticks) {
+    if (t->wakey_wakey <= ticky) {
       e = list_remove(e);
       thread_unblock(t);
     }
@@ -715,24 +737,40 @@ void thread_wake_up(int ticks)
   }
 }
 
-void thread_aging(void)
+void thread_aging(int64_t ticky)
 {
-	if (thread_prior_aging)
-  {
     int f_recent_cpu = thread_current()->recent_cpu;
+	/*
+	#ifdef load_avg_recent_cpu_float
+    f_recent_cpu = f_recent_cpu;
+	#endif
+	*/
+	#ifndef load_avg_recent_cpu_float	
     f_recent_cpu = f_recent_cpu * QBIT;
-    f_recent_cpu = f_recent_cpu + (1 * QBIT);
-    thread_current()->recent_cpu = f_recent_cpu / QBIT;
+	#endif
 
-    if (timer_ticks() % TIMER_FREQ == 0)
+    f_recent_cpu = f_recent_cpu + (1 * QBIT);
+
+	#ifdef load_avg_recent_cpu_float
+    thread_current()->recent_cpu = f_recent_cpu;
+	#endif
+	
+	#ifndef load_avg_recent_cpu_float
+    thread_current()->recent_cpu = f_recent_cpu / QBIT;
+	#endif
+
+    if (ticky % TIMER_FREQ == 0)
     {
       calculate_load_avg();
     }
-    if (timer_ticks() % 4 == 0)
+	
+    if (ticky % 4 == 0)
     {
       calculate_priority();
     }
-  }
+	
+	//calculate_load_avg();
+	//calculate_priority();
 }
 
 bool compare_priority(const struct list_elem* e1, const struct list_elem* e2, void* aux)
@@ -752,16 +790,30 @@ void calculate_load_avg(void)
 	{
 		ready_num++;
 	}
-	int f_load_avg = load_avg;// * QBIT;
+	#ifdef load_avg_recent_cpu_float
+	int f_load_avg = load_avg;
+	#endif
+
+	#ifndef load_avg_recent_cpu_float
+	int f_load_avg = load_avg * QBIT;
+	#endif
+
 	// load_avg * 59
 	f_load_avg = 59 * f_load_avg;
-	int f_ready_num = ready_num;// * QBIT;
+	int f_ready_num = ready_num * QBIT;
 	//  (load_avg * 59) + ready_num
 	f_load_avg = f_load_avg + f_ready_num;
 	//   {(load_avg * 50) + ready_num} / 60
 	f_load_avg = f_load_avg / 60;
-	//back to integer
-	load_avg = f_load_avg;// / QBIT;
+
+	#ifdef load_avg_recent_cpu_float
+	load_avg = f_load_avg;
+	#endif
+
+	//Back to integer
+	#ifndef load_avg_recent_cpu_float
+	load_avg = f_load_avg / QBIT;
+	#endif
 
 	for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
 	{
@@ -776,8 +828,16 @@ void calculate_load_avg(void)
 int calculate_recent_cpu(int recent_cpu, int nice)
 {
 	int64_t temp;
+	int f_load_avg;
 	//int f_recent_cpu = recent_cpu * QBIT;
-	int f_load_avg = load_avg;// * QBIT;
+	#ifdef load_avg_recent_cpu_float
+	f_load_avg = load_avg;
+	#endif
+
+	#ifndef load_avg_recent_cpu_float
+	f_load_avg = load_avg * QBIT;
+	#endif
+
 	// (2 * load_avg)
 	f_load_avg = f_load_avg * 2;
 	int f_recent_cpu = f_load_avg;
@@ -789,11 +849,21 @@ int calculate_recent_cpu(int recent_cpu, int nice)
 	//   (2 * load_avg) / (2 * load_avg + 1)
 	f_recent_cpu = (int)temp;
 	//    (2 * load_avg) / (2 * load_avg + 1) * recent_cpu
+	#ifdef load_avg_recent_cpu_float
+	f_recent_cpu = f_recent_cpu * recent_cpu / QBIT;
+	#endif
+	#ifndef load_avg_recent_cpu_float
 	f_recent_cpu = f_recent_cpu * recent_cpu;
+	#endif
 	//     (2 * load_avg) / (2 * load_avg + 1) * recent_cpu + nice
 	f_recent_cpu = f_recent_cpu + (nice * QBIT);
+
 	//Back to integer
-	return (f_recent_cpu);// / QBIT);
+	#ifndef load_avg_recent_cpu_float
+	f_recent_cpu = f_recent_cpu / QBIT;
+	#endif
+
+	return (f_recent_cpu);
 }
 
 void calculate_priority(void)
@@ -808,7 +878,12 @@ void calculate_priority(void)
 	for (e = list_begin(&all_list); e != list_end(&all_list); e = list_next(e))
 	{
 		t = list_entry(e, struct thread, allelem);
-		f_recent_cpu = t->recent_cpu;// * QBIT;
+		#ifdef load_avg_recent_cpu_float
+		f_recent_cpu = t->recent_cpu;
+		#endif
+		#ifndef load_avg_recent_cpu_float
+		f_recent_cpu = t->recent_cpu * QBIT;
+		#endif
 		f_recent_cpu = f_recent_cpu / 4;
 		f = f_PRI_MAX - f_recent_cpu;
 		f_t_nice = t->nice * QBIT;

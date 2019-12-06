@@ -112,7 +112,7 @@ sema_up (struct semaphore *sema)
   struct thread* t;
   struct thread* priority_t;
   struct list_elem* e;
-  struct thread* priority_e;
+  struct list_elem* priority_e;
   ASSERT (sema != NULL);
 
   old_level = intr_disable ();
