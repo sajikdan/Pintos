@@ -852,7 +852,10 @@ int calculate_recent_cpu(int recent_cpu, int nice)
 	f_recent_cpu = (int)temp;
 	//    (2 * load_avg) / (2 * load_avg + 1) * recent_cpu
 	#ifdef load_avg_recent_cpu_float
-	f_recent_cpu = f_recent_cpu * recent_cpu / QBIT;
+	temp = f_recent_cpu;
+	temp = temp * recent_cpu / QBIT;
+	//f_recent_cpu = f_recent_cpu * recent_cpu / QBIT;
+	f_recent_cpu = (int)temp;
 	#endif
 	#ifndef load_avg_recent_cpu_float
 	f_recent_cpu = f_recent_cpu * recent_cpu;
