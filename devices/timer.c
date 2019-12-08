@@ -97,13 +97,10 @@ timer_sleep (int64_t ticks)
     */
    /* Project #3. */
    old_level = intr_disable();
-   if (timer_elapsed (start) < ticks)
-   {
-     thread_current()->wakey_wakey = start + ticks;
-     list_push_back(&sleepy_sleepy, &thread_current()->elem);
-     thread_block();
-     intr_set_level(old_level);
-   }
+   thread_current()->wakey_wakey = start + ticks;
+   list_push_back(&sleepy_sleepy, &thread_current()->elem);
+   thread_block();
+   intr_set_level(old_level);
 }
 
 /* Sleeps for approximately MS milliseconds.  Interrupts must be
@@ -182,19 +179,6 @@ timer_interrupt (struct intr_frame *args UNUSED)
 { 
   ticks++;
   int64_t ticky = timer_ticks();
-  
-  /*if (thread_prior_aging || thread_mlfqs)
-  {
-    if (timer_ticks() % TIMER_FREQ == 0)
-    {
-     calculate_load_avg();
-    }
-	
-    if (timer_ticks() % 4 == 0)
-    {
-     calculate_priority();
-    }
-  }*/
   thread_tick (ticky);
 }
 
